@@ -3,7 +3,6 @@ data "azurerm_client_config" "current" {}
 locals {
   subscriptions               = toset(concat(var.cs_infra_subscription_id == "" ? [] : [var.cs_infra_subscription_id], var.subscription_ids))
   management_groups           = toset(length(var.subscription_ids) == 0 && length(var.management_group_ids) == 0 ? [data.azurerm_client_config.current.tenant_id] : var.management_group_ids)
-  env                         = var.env == "" ? "" : "-${var.env}"
   should_deploy_log_ingestion = var.enable_realtime_visibility
 
   microsoft_graph_permission_ids = var.microsoft_graph_permission_ids != null ? var.microsoft_graph_permission_ids : [
