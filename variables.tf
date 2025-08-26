@@ -93,26 +93,37 @@ variable "enable_realtime_visibility" {
 }
 
 variable "log_ingestion_settings" {
-  description = "Configuration settings for log ingestion. Controls whether to enable Azure Activity Logs and Microsoft Entra ID logs collection via Event Hubs, and allows using either newly created Event Hubs or existing ones."
+  description = "Configuration settings for log ingestion"
   type = object({
-    activity_log = optional(object({
+    activity_log = object({
       enabled = bool
-      existing_eventhub = optional(object({
-        use                          = bool
-        eventhub_resource_id         = optional(string, "")
-        eventhub_consumer_group_name = optional(string, "")
-      }), { use = false })
-    }), { enabled = true })
-    entra_id_log = optional(object({
+      existing_eventhub = object({
+        eventhub_resource_id         = string
+        eventhub_consumer_group_name = string
+      })
+    })
+    entra_id_log = object({
       enabled = bool
-      existing_eventhub = optional(object({
-        use                          = bool
-        eventhub_resource_id         = optional(string, "")
-        eventhub_consumer_group_name = optional(string, "")
-      }), { use = false })
-    }), { enabled = true })
+      existing_eventhub = object({
+        eventhub_resource_id         = string
+        eventhub_consumer_group_name = string
+      })
+    })
+    diagnostic_log = object({
+      enabled = bool
+      existing_eventhub = object({
+        eventhub_resource_id         = string
+        eventhub_consumer_group_name = string
+      })
+    })
+    network_log = object({
+      enabled = bool
+      existing_eventhub = object({
+        eventhub_resource_id         = string
+        eventhub_consumer_group_name = string
+      })
+    })
   })
-  default = {}
 }
 
 variable "resource_prefix" {
@@ -134,6 +145,12 @@ variable "tags" {
   }
   type = map(string)
 }
+
+variable "resource_group_name" {
+  type        = string
+  description = "Name of the resource group"
+}
+
 variable "enable_app_service_monitoring" {
   description = "Enable custom App Service role for enhanced web application monitoring"
   type        = bool
@@ -160,3 +177,4 @@ variable "existing_service_principal_object_id" {
     error_message = "When create_service_principal is false, existing_service_principal_object_id must be provided and must be a valid UUID format."
   }
 }
+

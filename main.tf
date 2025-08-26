@@ -14,28 +14,36 @@ locals {
     "483bed4a-2ad3-4361-a73b-c83ccdbdc53c", # RoleManagement.Read.Directory (Role)
     "df021288-bdef-4463-88db-98f22de89214"  # User.Read.All (Role)
   ]
+  service_principal_object_id = var.create_service_principal ? module.service_principal[0].object_id : var.existing_service_principal_object_id
 }
 
-resource "crowdstrike_cloud_azure_tenant" "this" {
-  tenant_id                      = data.azurerm_client_config.current.tenant_id
-  microsoft_graph_permission_ids = local.microsoft_graph_permission_ids
-  realtime_visibility = {
-    enabled = var.enable_realtime_visibility
-  }
-  cs_infra_subscription_id = var.cs_infra_subscription_id
-  cs_infra_location        = var.location
-  resource_name_prefix     = var.resource_prefix
-  resource_name_suffix     = var.resource_suffix
-  environment              = var.env
-  management_group_ids     = var.management_group_ids
-  subscription_ids         = var.subscription_ids
-  tags                     = var.tags
-}
+# Comment out this block only when crowdstrike provider is enabled
+# Note Crowdstrike Provider authenticates client ID and secrets at the time of running terraform plan/apply
+
+
+# resource "crowdstrike_cloud_azure_tenant" "this" {
+#   count = var.enable_crowdstrike_provider_resources ? 1 : 0
+
+#   tenant_id                      = data.azurerm_client_config.current.tenant_id
+#   microsoft_graph_permission_ids = local.microsoft_graph_permission_ids
+#   realtime_visibility = {
+#     enabled = var.enable_realtime_visibility
+#   }
+#   cs_infra_subscription_id = var.cs_infra_subscription_id
+#   cs_infra_location        = var.location
+#   resource_name_prefix     = var.resource_prefix
+#   resource_name_suffix     = var.resource_suffix
+#   environment              = var.env
+#   management_group_ids     = var.management_group_ids
+#   subscription_ids         = var.subscription_ids
+#   tags                     = var.tags
+# }
 
 module "service_principal" {
+  count  = var.create_service_principal ? 1 : 0
   source = "./modules/service-principal/"
 
-  azure_client_id                = crowdstrike_cloud_azure_tenant.this.cs_azure_client_id
+  azure_client_id                = "0805b105-a007-49b3-b575-14eed38fc1d0"
   microsoft_graph_permission_ids = local.microsoft_graph_permission_ids
 }
 
@@ -44,21 +52,14 @@ module "asset_inventory" {
 
   management_group_ids     = local.management_groups
   subscription_ids         = local.subscriptions
-  app_service_principal_id = module.service_principal.object_id
+  app_service_principal_id = local.service_principal_object_id
   resource_prefix          = var.resource_prefix
   resource_suffix          = var.resource_suffix
+  enable_app_service_monitoring = var.enable_app_service_monitoring
 
   depends_on = [
     module.service_principal
   ]
-}
-
-resource "azurerm_resource_group" "this" {
-  count = local.should_deploy_log_ingestion ? 1 : 0
-
-  name     = "${var.resource_prefix}rg-cs${local.env}${var.resource_suffix}"
-  location = var.location
-  tags     = var.tags
 }
 
 module "deployment_scope" {
@@ -73,12 +74,12 @@ module "log_ingestion" {
   source = "./modules/log-ingestion/"
 
   subscription_ids         = module.deployment_scope.all_active_subscription_ids
-  app_service_principal_id = module.service_principal.object_id
-  cs_infra_subscription_id = var.cs_infra_subscription_id
-  resource_group_name      = azurerm_resource_group.this[0].name
+  app_service_principal_id = local.service_principal_object_id
+  resource_group_name      = var.resource_group_name
   activity_log_settings    = var.log_ingestion_settings.activity_log
   entra_id_log_settings    = var.log_ingestion_settings.entra_id_log
-  falcon_ip_addresses      = var.falcon_ip_addresses
+  diagnostic_log_settings  = var.log_ingestion_settings.diagnostic_log
+  network_log_settings     = var.log_ingestion_settings.network_log
   env                      = var.env
   location                 = var.location
   resource_prefix          = var.resource_prefix
@@ -86,28 +87,6 @@ module "log_ingestion" {
   tags                     = var.tags
 
   depends_on = [
-    module.deployment_scope,
-    azurerm_resource_group.this
+    module.deployment_scope
   ]
-}
-
-resource "crowdstrike_cloud_azure_tenant_eventhub_settings" "update_event_hub_settings" {
-  count = local.should_deploy_log_ingestion ? 1 : 0
-
-  tenant_id = data.azurerm_client_config.current.tenant_id
-
-  settings = concat(
-    var.log_ingestion_settings.activity_log.enabled ? [
-      {
-        type           = "activity_logs",
-        id             = module.log_ingestion[0].activity_log_eventhub_id,
-        consumer_group = module.log_ingestion[0].activity_log_eventhub_consumer_group_name
-    }] : [],
-    var.log_ingestion_settings.entra_id_log.enabled ? [
-      {
-        type           = "entra_logs",
-        id             = module.log_ingestion[0].entra_id_log_eventhub_id,
-        consumer_group = module.log_ingestion[0].entra_id_log_eventhub_consumer_group_name
-    }] : []
-  )
 }
