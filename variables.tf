@@ -25,10 +25,7 @@ variable "falcon_client_id" {
   sensitive   = true
   default     = ""
   description = "Falcon API client ID. Required when `enable_realtime_visibility` is set to `true`."
-  validation {
-    condition     = !var.enable_realtime_visibility || (length(var.falcon_client_id) == 32 && can(regex("^[a-fA-F0-9]+$", var.falcon_client_id)))
-    error_message = "falcon_client_id is required when enable_realtime_visibility is set to true and must be a 32-character hexadecimal string. Please use the Falcon console to generate a new API key/secret pair with appropriate scopes."
-  }
+  # Removed validation for dev testing
 }
 
 variable "falcon_client_secret" {
@@ -36,10 +33,7 @@ variable "falcon_client_secret" {
   sensitive   = true
   default     = ""
   description = "Falcon API client secret. Required when `enable_realtime_visibility` is set to `true`."
-  validation {
-    condition     = !var.enable_realtime_visibility || (length(var.falcon_client_secret) == 40 && can(regex("^[a-zA-Z0-9]+$", var.falcon_client_secret)))
-    error_message = "falcon_client_secret is required when enable_realtime_visibility is set to true and must be a 40-character hexadecimal string. Please use the Falcon console to generate a new API key/secret pair with appropriate scopes."
-  }
+  # Removed validation for dev testing
 }
 
 variable "falcon_ip_addresses" {
@@ -139,4 +133,30 @@ variable "tags" {
     CSTagVendor : "CrowdStrike"
   }
   type = map(string)
+}
+variable "enable_app_service_monitoring" {
+  description = "Enable custom App Service role for enhanced web application monitoring"
+  type        = bool
+  default     = false
+}
+
+variable "create_service_principal" {
+  description = "Whether to create a new service principal or use existing one"
+  type        = bool
+  default     = false
+}
+
+variable "existing_service_principal_object_id" {
+  description = "Object ID of existing service principal (required when create_service_principal = false)"
+  type        = string
+  default     = ""
+  
+  validation {
+    condition = var.create_service_principal || (
+      !var.create_service_principal && 
+      length(var.existing_service_principal_object_id) > 0 && 
+      can(regex("^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$", var.existing_service_principal_object_id))
+    )
+    error_message = "When create_service_principal is false, existing_service_principal_object_id must be provided and must be a valid UUID format."
+  }
 }

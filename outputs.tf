@@ -5,7 +5,7 @@ output "tenant_id" {
 
 output "service_principal_object_id" {
   description = "Object ID of the CrowdStrike service principal used for Azure resource access"
-  value       = module.service_principal.object_id
+  value       = var.create_service_principal ? module.service_principal[0].object_id : var.existing_service_principal_object_id
 }
 
 output "subscription_scopes" {

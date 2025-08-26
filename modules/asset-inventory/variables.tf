@@ -41,3 +41,9 @@ variable "resource_suffix" {
   default     = ""
   type        = string
 }
+
+variable "enable_app_service_monitoring" {
+  description = "Enable custom App Service role for enhanced web application monitoring"
+  type        = bool
+  default     = false
+}
